@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HuellaViva UAN (prototipo académico)</title>
+<style>
+  :root { --verde:#1f9d6b; --azul:#0b6e99; --borde:#d5dde3; --fondo:#f4f8f9; }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; margin:0; background:var(--fondo); color:#16303b; }
+  header { background:var(--azul); color:#fff; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  main { max-width:780px; margin:16px auto; padding:0 12px; }
+  .card { background:#fff; border:1px solid var(--borde); border-radius:10px; padding:16px; margin-bottom:14px; }
+  label { display:block; margin:10px 0 4px; font-weight:600; }
+  input, select, textarea { width:100%; padding:8px; border:1px solid var(--borde); border-radius:6px; font:inherit; }
+  input[type=checkbox] { width:auto; margin-right:6px; }
+  button { background:var(--verde); color:#fff; border:0; border-radius:6px; padding:9px 14px; font:inherit; cursor:pointer; margin:8px 8px 0 0; }
+  button.sec { background:#fff; color:var(--azul); border:1px solid var(--azul); }
+  nav { display:flex; flex-wrap:wrap; margin-bottom:10px; }
+  table { width:100%; border-collapse:collapse; font-size:.88rem; display:block; overflow-x:auto; }
+  th, td { border-bottom:1px solid var(--borde); padding:6px; text-align:left; }
+  .aviso { background:#fff4e0; border:1px solid #f0b44c; padding:10px; border-radius:6px; font-size:.88rem; margin-bottom:14px; }
+  .err { color:#b42318; } .ok { color:#146c43; } .peq { font-size:.85rem; color:#4a6572; }
+  .hidden { display:none !important; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; } .row > div { flex:1; min-width:150px; }
+  .total { font-size:2rem; font-weight:700; color:var(--verde); }
+</style>
+</head>
+<body>
+<header>
+  <strong>HuellaViva UAN</strong>
+  <span><span id="quien" class="peq" style="color:#fff"></span>
+  <button class="sec" id="btnSalir" hidden>Salir</button></span>
+</header>
+
+<main>
+  <div class="aviso">Prototipo académico y estimador educativo. No es un inventario institucional verificado,
+  una certificación ni un resultado oficial de RENARE. Las cifras son estimaciones con incertidumbre.</div>
+
+  <!-- ============ LOGIN ============ -->
+  <section id="v-login" class="card">
+    <h2>Ingresar</h2>
+    <label for="email">Correo</label><input id="email" type="email" autocomplete="email">
+    <label for="clave">Contraseña (mínimo 6 caracteres)</label><input id="clave" type="password" autocomplete="current-password">
+    <button id="btnIngresar">Ingresar</button>
+    <button class="sec" id="btnRegistro">Crear cuenta</button>
+    <p id="msg-login"></p>
+  </section>
+
+  <!-- ============ PERFIL (primera vez) ============ -->
+  <section id="v-perfil" class="card hidden">
+    <h2>Tu grupo</h2>
+    <label for="tipo">¿Cuál es tu grupo?</label>
+    <select id="tipo"><option value="estudiante">Estudiante</option><option value="profesor">Profesor</option><option value="administrativo">Administrativo</option></select>
+    <label for="campus">Campus (opcional)</label><input id="campus">
+    <button id="btnPerfil">Continuar</button>
+    <p id="msg-perfil"></p>
+  </section>
+
+  <!-- ============ APP ============ -->
+  <div id="app" class="hidden">
+    <nav>
+      <button data-v="encuesta">Encuesta</button>
+      <button class="sec" data-v="informe">Mi informe</button>
+      <button class="sec" data-v="datos">Mis datos</button>
+      <button class="sec" data-v="admin">Panel admin</button>
+    </nav>
+
+    <!-- ENCUESTA -->
+    <section id="v-encuesta">
+      <div class="card"><strong id="periodo-info"></strong></div>
+
+      <div id="consent-box" class="card hidden">
+        <h3>Consentimiento informado</h3>
+        <p id="consent-texto"></p>
+        <p class="peq">Finalidad: <span id="consent-fin"></span> · Versión: <span id="consent-ver"></span></p>
+        <button id="btnAceptar">Acepto y continúo</button>
+      </div>
+
+      <div id="form-box" class="card hidden">
+        <p class="peq">Periodo de reporte: un mes. Los campos con * son obligatorios. Si es un dato aproximado, márcalo como estimado.</p>
+
+        <h3>Electricidad del hogar</h3>
+        <div class="row">
+          <div><label for="A1">Consumo del mes en kWh *</label><input id="A1" type="number" min="0" step="any">
+            <label class="peq"><input type="checkbox" id="est_A1">Es un dato estimado</label></div>
+          <div><label for="A3">Personas que comparten el consumo *</label><input id="A3" type="number" min="1" max="15"></div>
+        </div>
+
+        <h3>Gas de cocina (opcional)</h3>
+        <div class="row">
+          <div><label for="B1">Combustible</label>
+            <select id="B1"><option value="">No aplica</option><option value="natural">Gas natural</option><option value="glp">GLP (pipeta)</option></select></div>
+          <div><label for="B2">Cantidad en el mes (m³ o pipetas)</label><input id="B2" type="number" min="0" step="any"></div>
+          <div><label for="B3">Personas que comparten</label><input id="B3" type="number" min="1" max="15"></div>
+        </div>
+
+        <h3>Desplazamiento a campus</h3>
+        <div class="row">
+          <div><label for="C1">Días que asistió presencialmente *</label><input id="C1" type="number" min="0" max="31"></div>
+          <div><label for="C2">Medio de transporte</label>
+            <select id="C2"><option value="">No aplica</option><option value="caminata">Caminata</option><option value="bicicleta">Bicicleta</option>
+              <option value="bus">Bus</option><option value="sitp_transmilenio">SITP / TransMilenio</option><option value="carro">Carro</option>
+              <option value="moto">Moto</option><option value="taxi_app">Taxi / app</option><option value="metro">Metro</option></select></div>
+          <div><label for="C3">Distancia ida y vuelta</label>
+            <select id="C3"><option value="">—</option><option value="1">Menos de 2 km</option><option value="3.5">2 a 5 km</option>
+              <option value="7.5">5 a 10 km</option><option value="15">10 a 20 km</option><option value="30">20 a 40 km</option><option value="50">Más de 40 km</option></select></div>
+        </div>
+
+        <h3>Viaje aéreo en el mes (opcional)</h3>
+        <label for="D2">Tipo de recorrido (un trayecto)</label>
+        <select id="D2"><option value="">No viajé en avión</option><option value="nacional_corto">Nacional corto</option>
+          <option value="nacional_largo">Nacional largo</option><option value="internacional">Internacional</option></select>
+
+        <button id="btnGuardar" class="sec">Guardar borrador</button>
+        <button id="btnEnviar">Enviar y calcular</button>
+        <p id="msg-enc"></p>
+      </div>
+    </section>
+
+    <!-- INFORME -->
+    <section id="v-informe" class="hidden"><div id="informe" class="card"></div></section>
+
+    <!-- MIS DATOS -->
+    <section id="v-datos" class="hidden">
+      <div class="card">
+        <h3>Solicitar corrección o supresión de datos</h3>
+        <label for="sol-tipo">Tipo</label>
+        <select id="sol-tipo"><option value="correccion">Corrección</option><option value="supresion">Supresión</option><option value="retiro">Retiro de participación</option></select>
+        <label for="sol-det">Detalle</label><textarea id="sol-det" rows="3"></textarea>
+        <button id="btnSolicitud">Enviar solicitud</button>
+        <button class="sec" id="btnRevocar">Retirar mi consentimiento</button>
+        <p id="msg-datos"></p>
+        <div id="lista-sol"></div>
+      </div>
+    </section>
+
+    <!-- ADMIN -->
+    <section id="v-admin" class="hidden">
+      <div class="card">
+        <h3>Dashboard agregado</h3>
+        <label for="adm-periodo">Periodo</label><select id="adm-periodo"></select>
+        <button id="btnConsultar">Consultar</button>
+        <button class="sec" id="btnCsv">Exportar CSV</button>
+        <p id="msg-adm"></p>
+        <div id="adm-resultado"></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- supabase-js v2 (UMD), versión fija -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<!-- config.js define window.HUELLAVIVA = { SUPABASE_URL, SUPABASE_ANON_KEY } (ver config.example.js) -->
+<script src="config.js"></script>
+<script>
+/* =====================================================================
+   HuellaViva UAN - lógica de la aplicación
+   Nota de seguridad: aquí SOLO va la clave "anon". La seguridad real la
+   imponen las políticas RLS de la base de datos. NUNCA uses service_role.
+   ===================================================================== */
+const { SUPABASE_URL, SUPABASE_ANON_KEY } = window.HUELLAVIVA || {};
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const $ = id => document.getElementById(id);
+// Escapa texto que viene de la base de datos antes de ponerlo como HTML (evita XSS)
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const msg = (id, t, ok = false) => { $(id).textContent = t; $(id).className = ok ? 'ok' : 'err'; };
+
+let user = null, periodo = null, encuesta = null, versionAviso = null, ultimoAdmin = [];
+
+/* ---------- Sesión ---------- */
+// setTimeout evita llamar a Supabase dentro del propio callback de auth
+db.auth.onAuthStateChange((_evento, session) => setTimeout(() => alCambiarSesion(session), 0));
+
+async function alCambiarSesion(session) {
+  user = session?.user ?? null;
+  $('btnSalir').hidden = !user;
+  $('quien').textContent = user ? user.email : '';
+  $('v-login').classList.toggle('hidden', !!user);
+  if (!user) { $('v-perfil').classList.add('hidden'); $('app').classList.add('hidden'); return; }
+  // ¿Ya tiene perfil? Si no, pedir el grupo poblacional (RF-02)
+  const { data: perfil } = await db.from('profiles').select('id').eq('id', user.id).maybeSingle();
+  $('v-perfil').classList.toggle('hidden', !!perfil);
+  $('app').classList.toggle('hidden', !perfil);
+  if (perfil) mostrar('encuesta');
+}
+
+// Si el correo o la clave van vacíos, supabase-js intenta un registro "anónimo" y
+// responde "Anonymous sign-ins are disabled". Por eso se valida antes.
+const datosLogin = () => {
+  const email = $('email').value.trim(), password = $('clave').value;
+  if (!email || password.length < 6) { msg('msg-login', 'Escribe un correo y una contraseña de al menos 6 caracteres.'); return null; }
+  return { email, password };
+};
+
+$('btnIngresar').onclick = async () => {
+  const d = datosLogin(); if (!d) return;
+  const { error } = await db.auth.signInWithPassword(d);
+  if (error) msg('msg-login', error.message);
+};
+$('btnRegistro').onclick = async () => {
+  const d = datosLogin(); if (!d) return;
+  const { error } = await db.auth.signUp(d);
+  error ? msg('msg-login', error.message)
+        : msg('msg-login', 'Cuenta creada. Si la confirmación por correo está activa, revisa tu bandeja y luego ingresa.', true);
+};
+$('btnSalir').onclick = () => db.auth.signOut();
+
+$('btnPerfil').onclick = async () => {
+  const { error } = await db.from('profiles').insert({ id: user.id, tipo_usuario: $('tipo').value, campus: $('campus').value || null });
+  error ? msg('msg-perfil', error.message) : alCambiarSesion({ user });
+};
+
+/* ---------- Navegación ---------- */
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => mostrar(b.dataset.v));
+function mostrar(v) {
+  ['encuesta', 'informe', 'datos', 'admin'].forEach(x => $('v-' + x).classList.toggle('hidden', x !== v));
+  ({ encuesta: vistaEncuesta, informe: vistaInforme, datos: vistaDatos, admin: vistaAdmin })[v]();
+}
+
+/* ---------- Encuesta ---------- */
+async function cargarContexto() {
+  const { data: p } = await db.from('survey_periods').select('*').eq('status', 'abierto')
+    .order('start_date', { ascending: false }).limit(1).maybeSingle();
+  periodo = p; encuesta = null;
+  if (p) { const { data: e } = await db.from('surveys').select('*').eq('period_id', p.id).maybeSingle(); encuesta = e; }
+}
+
+async function vistaEncuesta() {
+  await cargarContexto();
+  $('consent-box').classList.add('hidden'); $('form-box').classList.add('hidden');
+  if (!periodo) { $('periodo-info').textContent = 'No hay un periodo abierto por ahora.'; return; }
+  $('periodo-info').textContent = `Periodo: ${periodo.name} (${periodo.start_date} a ${periodo.end_date})`;
+  if (encuesta?.status === 'enviada') { $('periodo-info').textContent += ' · Ya enviaste esta encuesta; consulta tu informe.'; return; }
+
+  // RF-01: sin consentimiento aceptado no se muestra la encuesta
+  const { data: v } = await db.from('consent_versions').select('*').eq('active', true).limit(1).maybeSingle();
+  if (!v) { $('periodo-info').textContent += ' · No hay un aviso de consentimiento activo.'; return; }
+  versionAviso = v;
+  const { data: c } = await db.from('consents').select('id').eq('consent_version_id', v.id).is('revoked_at', null).maybeSingle();
+  if (!c) {
+    $('consent-texto').textContent = v.texto; $('consent-fin').textContent = v.purpose; $('consent-ver').textContent = v.version;
+    $('consent-box').classList.remove('hidden'); return;
+  }
+  $('form-box').classList.remove('hidden');
+  if (encuesta) await cargarRespuestas();
+}
+
+$('btnAceptar').onclick = async () => {
+  // upsert: si antes revocó, se reactiva la misma fila (hay unicidad perfil+versión)
+  const { error } = await db.from('consents').upsert(
+    { profile_id: user.id, consent_version_id: versionAviso.id, accepted_at: new Date().toISOString(), revoked_at: null },
+    { onConflict: 'profile_id,consent_version_id' });
+  error ? alert(error.message) : vistaEncuesta();
+};
+
+const CODIGOS = ['A1', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3', 'D2'];
+async function cargarRespuestas() {
+  const { data } = await db.from('activity_answers').select('*').eq('survey_id', encuesta.id);
+  (data || []).forEach(r => {
+    if (!CODIGOS.includes(r.question_code)) return;
+    $(r.question_code).value = r.numeric_value ?? r.text_value ?? '';
+    if (r.question_code === 'A1') $('est_A1').checked = r.is_estimated;
+  });
+}
+
+// Convierte el formulario en filas de activity_answers (omite campos vacíos)
+function filas() {
+  const f = [], base = { survey_id: encuesta.id, item_index: 1 };
+  const num = (c, est = false) => { const v = $(c).value; if (v !== '') f.push({ ...base, question_code: c, numeric_value: Number(v), is_estimated: est }); };
+  const txt = c => { const v = $(c).value; if (v) f.push({ ...base, question_code: c, text_value: v, is_estimated: false }); };
+  num('A1', $('est_A1').checked); num('A3'); txt('B1'); num('B2'); num('B3');
+  num('C1'); txt('C2'); num('C3', true /* km representativo del rango: siempre estimado */); txt('D2');
+  return f;
+}
+
+function validar() {
+  if ($('A1').value === '' || $('A3').value === '' || $('C1').value === '') throw new Error('Completa los campos obligatorios (*).');
+  if ($('B2').value !== '' && !$('B1').value) throw new Error('Indica el tipo de combustible.');
+  if (!!$('C2').value !== ($('C3').value !== '')) throw new Error('Para el transporte indica el medio y la distancia.');
+}
+
+async function guardar() {
+  if (!encuesta) {
+    const { data, error } = await db.from('surveys').insert({ profile_id: user.id, period_id: periodo.id }).select().single();
+    if (error) throw error; encuesta = data;
+  }
+  // Reemplazo simple: borra y vuelve a insertar las respuestas del borrador
+  let r = await db.from('activity_answers').delete().eq('survey_id', encuesta.id); if (r.error) throw r.error;
+  const rows = filas();
+  if (rows.length) { r = await db.from('activity_answers').insert(rows); if (r.error) throw r.error; }
+}
+
+$('btnGuardar').onclick = async () => {
+  try { await guardar(); msg('msg-enc', 'Borrador guardado.', true); } catch (e) { msg('msg-enc', e.message); }
+};
+$('btnEnviar').onclick = async () => {
+  try {
+    validar(); await guardar();
+    // El cálculo lo hace la función de la base de datos (nadie puede falsificarlo desde el navegador)
+    let r = await db.rpc('calcular_huella', { p_survey_id: encuesta.id }); if (r.error) throw r.error;
+    r = await db.from('surveys').update({ status: 'enviada', submitted_at: new Date().toISOString() }).eq('id', encuesta.id);
+    if (r.error) throw r.error;
+    mostrar('informe');
+  } catch (e) { msg('msg-enc', e.message); }
+};
+
+/* ---------- Informe individual (RF-05) ---------- */
+const CAT = { A: 'Electricidad', B: 'Gas', C: 'Transporte', D: 'Aviación' };
+const fmt = n => Number(n).toFixed(2);
+
+async function vistaInforme() {
+  const box = $('informe'); box.innerHTML = '<p>Cargando…</p>';
+  await cargarContexto();
+  if (!encuesta || encuesta.status !== 'enviada') { box.innerHTML = '<p>Aún no has enviado la encuesta del periodo abierto.</p>'; return; }
+  const { data: calc } = await db.from('calculations').select('id,total_kgco2e,calculated_at,methodology_version')
+    .eq('survey_id', encuesta.id).order('calculated_at', { ascending: false }).limit(1).maybeSingle();
+  if (!calc) { box.innerHTML = '<p>No hay cálculo disponible.</p>'; return; }
+  const { data: det } = await db.from('calculation_details')
+    .select('activity_value,converted_value,emissions_kgco2e,activity_answers(question_code,text_value,unit),emission_factors(factor_key,factor_value,unit_activity,source,reference_year,is_placeholder)')
+    .eq('calculation_id', calc.id);
+
+  const porCat = {}; let hayPrueba = false;
+  (det || []).forEach(d => {
+    const c = CAT[d.activity_answers.question_code[0]];
+    porCat[c] = (porCat[c] || 0) + Number(d.emissions_kgco2e);
+    if (d.emission_factors.is_placeholder) hayPrueba = true;
+  });
+  const total = Number(calc.total_kgco2e);
+  const principal = Object.entries(porCat).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+  box.innerHTML = `
+    <h2>Tu estimación de ${esc(periodo.name)}</h2>
+    <div class="total">${total >= 1000 ? fmt(total / 1000) + ' t' : fmt(total) + ' kg'} CO₂e</div>
+    <p class="peq">Calculado el ${esc(new Date(calc.calculated_at).toLocaleString())} · método ${esc(calc.methodology_version)}</p>
+    ${hayPrueba ? '<div class="aviso">Esta cifra usa factores de PRUEBA, no oficiales. No debe presentarse como resultado real.</div>' : ''}
+    <h3>Desglose por categoría</h3>
+    <table><tr><th>Categoría</th><th>kg CO₂e</th></tr>
+      ${Object.entries(porCat).map(([c, v]) => `<tr><td>${esc(c)}</td><td>${fmt(v)}</td></tr>`).join('')}</table>
+    <h3>Detalle y factores usados</h3>
+    <table><tr><th>Dato</th><th>Convertido</th><th>Factor</th><th>Fuente (año)</th><th>kg CO₂e</th></tr>
+      ${(det || []).map(d => `<tr><td>${esc(d.activity_answers.question_code)} ${esc(d.activity_answers.text_value ?? d.activity_value)} ${esc(d.activity_answers.unit)}</td>
+        <td>${fmt(d.converted_value)}</td><td>${esc(d.emission_factors.factor_value)} /${esc(d.emission_factors.unit_activity)}</td>
+        <td>${esc(d.emission_factors.source)} (${esc(d.emission_factors.reference_year ?? 's.f.')})</td><td>${fmt(d.emissions_kgco2e)}</td></tr>`).join('')}</table>
+    <h3>Supuestos y limitaciones</h3>
+    <ul class="peq"><li>Estimación de actividades del periodo, no un inventario de ciclo de vida.</li>
+      <li>Electricidad y gas se reparten entre las personas del hogar que indicaste.</li>
+      <li>La distancia de transporte usa el valor medio del rango elegido (estimada).</li>
+      <li>Las categorías sin datos o sin factor disponible no se incluyen en el total.</li></ul>
+    <h3>Ideas para reducir (orientativas)</h3>
+    <p>${principal ? `Tu categoría con mayor aporte es <b>${esc(principal)}</b>. Pequeños cambios sostenidos en ese frente suelen ser lo más efectivo.` : 'Sin datos para sugerir.'}</p>`;
+}
+
+/* ---------- Mis datos (RF-09) ---------- */
+async function vistaDatos() {
+  const { data } = await db.from('data_requests').select('tipo,estado,created_at').order('created_at', { ascending: false });
+  $('lista-sol').innerHTML = (data || []).length
+    ? '<table><tr><th>Fecha</th><th>Tipo</th><th>Estado</th></tr>' +
+      data.map(s => `<tr><td>${esc(new Date(s.created_at).toLocaleDateString())}</td><td>${esc(s.tipo)}</td><td>${esc(s.estado)}</td></tr>`).join('') + '</table>'
+    : '<p class="peq">Aún no tienes solicitudes.</p>';
+}
+$('btnSolicitud').onclick = async () => {
+  const { error } = await db.from('data_requests').insert({ profile_id: user.id, tipo: $('sol-tipo').value, detalle: $('sol-det').value || null });
+  error ? msg('msg-datos', error.message) : (msg('msg-datos', 'Solicitud registrada.', true), $('sol-det').value = '', vistaDatos());
+};
+$('btnRevocar').onclick = async () => {
+  if (!confirm('Si retiras el consentimiento no podrás crear nuevas respuestas. ¿Continuar?')) return;
+  const { error } = await db.from('consents').update({ revoked_at: new Date().toISOString() }).eq('profile_id', user.id).is('revoked_at', null);
+  error ? msg('msg-datos', error.message) : msg('msg-datos', 'Consentimiento retirado.', true);
+};
+
+/* ---------- Panel admin (RF-06, RF-08, RF-10) ---------- */
+async function vistaAdmin() {
+  const { data } = await db.from('survey_periods').select('id,name').order('start_date', { ascending: false });
+  $('adm-periodo').innerHTML = (data || []).map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+}
+$('btnConsultar').onclick = async () => {
+  $('msg-adm').textContent = ''; ultimoAdmin = [];
+  // El admin NO lee tablas individuales: solo estas funciones que agregan y ocultan grupos < 10
+  const a = await db.rpc('dashboard_agregado', { p_period: $('adm-periodo').value });
+  const m = await db.rpc('muestra_periodo', { p_period: $('adm-periodo').value });
+  const err = a.error || m.error;
+  if (err) { msg('msg-adm', err.message.includes('No autorizado') ? 'Tu cuenta no tiene rol de administrador.' : err.message); $('adm-resultado').innerHTML = ''; return; }
+  ultimoAdmin = a.data;
+  $('adm-resultado').innerHTML =
+    '<h4>Participantes efectivos por grupo (sin extrapolar a la comunidad)</h4>' +
+    (m.data.length ? '<table><tr><th>Grupo</th><th>n</th></tr>' + m.data.map(r => `<tr><td>${esc(r.grupo)}</td><td>${esc(r.n_participantes)}</td></tr>`).join('') + '</table>'
+                   : '<p class="peq">Ningún grupo alcanza el mínimo de 10 participantes: se oculta por privacidad.</p>') +
+    '<h4>Emisiones por grupo y categoría (kg CO₂e por persona)</h4>' +
+    (a.data.length ? '<table><tr><th>Grupo</th><th>Categoría</th><th>n</th><th>Promedio</th><th>Mediana</th></tr>' +
+      a.data.map(r => `<tr><td>${esc(r.grupo)}</td><td>${esc(r.categoria)}</td><td>${esc(r.n_participantes)}</td><td>${esc(r.promedio_kgco2e)}</td><td>${esc(r.mediana_kgco2e)}</td></tr>`).join('') + '</table>'
+      : '<p class="peq">Sin celdas con 10 o más respuestas.</p>');
+};
+$('btnCsv').onclick = () => {
+  if (!ultimoAdmin.length) return msg('msg-adm', 'Primero consulta un periodo con datos.');
+  // CSV solo con agregados: sin identificadores ni respuestas individuales
+  const cols = ['grupo', 'categoria', 'n_participantes', 'promedio_kgco2e', 'mediana_kgco2e'];
+  const csv = [cols.join(','), ...ultimoAdmin.map(r => cols.map(c => `"${String(r[c]).replace(/"/g, '""')}"`).join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'huellaviva_agregados.csv'; a.click();
+};
+</script>
+</body>
+</html>
